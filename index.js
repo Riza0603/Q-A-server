@@ -1,51 +1,54 @@
+// Import required libraries
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
-const { Configuration, OpenAIApi } = require("openai");
-require("dotenv").config(); // Load API key from .env file
+const { OpenAI } = require("openai"); // Updated OpenAI library import
+require('dotenv').config();  // Load environment variables from .env file
 
+// Create an Express app
 const app = express();
+
+// Middleware
 app.use(bodyParser.json());
 app.use(cors());
 
-// Initialize OpenAI API with your API key from the .env file
-const configuration = new Configuration({
-    apiKey: process.env.OPENAI_API_KEY,
+// Initialize OpenAI with your API key from the .env file
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,  // Using API key from .env
+  apiBaseUrl: "https://api.openai.com/v1",
 });
-const openai = new OpenAIApi(configuration);
 
-// Test Route
+// Test Route to check server
 app.get("/", (req, res) => {
-    res.send("Welcome to the AI-Powered Q&A Backend!");
+  res.send("Welcome to the AI-Powered Q&A Backend!");
 });
 
 // Route to handle Q&A based on input
 app.post("/ask", async (req, res) => {
-    const { question, documentContent } = req.body;
+  const { question, documentContent } = req.body;
 
-    if (!question || !documentContent) {
-        return res.status(400).json({ error: "Question and document content are required!" });
-    }
+  if (!question || !documentContent) {
+    return res.status(400).json({ error: "Question and document content are required!" });
+  }
 
-    try {
-        // Use OpenAI to get a response
-        const response = await openai.createChatCompletion({
-            model: "gpt-3.5-turbo", // Or use "gpt-4" if available in your account
-            messages: [
-                { role: "system", content: "You are an AI assistant helping with document-based questions." },
-                { role: "user", content: `Document: ${documentContent}\nQuestion: ${question}` },
-            ],
-        });
+  try {
+    // Use OpenAI to get a response
+    const response = await openai.completions.create({
+      model: "gpt-3.5-turbo", // Or "gpt-4" if available in your account
+      prompt: `Document: ${documentContent}\nQuestion: ${question}`,
+      max_tokens: 150,
+    });
 
-        const answer = response.data.choices[0].message.content;
-        res.json({ answer });
-    } catch (error) {
-        console.error("Error with OpenAI API:", error.message);
-        res.status(500).json({ error: "Failed to get a response from the AI." });
-    }
+    const answer = response.choices[0].text;
+    res.json({ answer });
+  } catch (error) {
+    console.error("Error with OpenAI API:", error.message);
+    res.status(500).json({ error: "Failed to get a response from the AI." });
+  }
 });
 
-const PORT = process.env.PORT || 3001;
+// Start the server
+const PORT = process.env.PORT || 3001; // Make sure it matches your frontend API call
 app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
+  console.log(`Server is running on http://localhost:${PORT}`);
 });
